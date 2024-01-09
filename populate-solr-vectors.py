@@ -6,6 +6,7 @@ from utils.signal_utils import GracefulKiller
 from io import BytesIO, BufferedReader, IOBase, TextIOWrapper
 import numpy as np
 import json
+import pickle
 
 logger: ColouredLogger = logging.getLogger(__name__)
 
@@ -142,7 +143,9 @@ def send_embedding_request(text: str, medium: IOBase):
     if not text:
         logger.warning("Cannot embed empty text.")
         return False
-    medium.write(text)
+    payload = [x.removesuffix("\n").removeprefix("\n") for x in text.split(".") if x]
+
+    pickle.dump(payload, medium)
     return True
 
 
@@ -202,7 +205,7 @@ def main(
             logger.error(f"Full text field in doc with ID: '{doc_id}' is not a string.")
             failed_count += 1
             continue
-        with open(request_file, "w", encoding="utf-8") as fs:
+        with open(request_file, "wb") as fs:
             if not send_embedding_request(full_text, fs):
                 logger.error(
                     f"Could not send embedding request for doc with ID: '{doc_id}'"

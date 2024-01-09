@@ -4,6 +4,7 @@ from io import BytesIO
 import numpy as np
 import torch
 from sentence_transformers import SentenceTransformer
+import pickle
 
 path = "./test-pipe"
 
@@ -14,16 +15,14 @@ model = SentenceTransformer("bert-base-nli-mean-tokens").to(device)
 print(f"Model loaded in: {t.perf_counter() - start}")
 
 while True:
-    with open("./test-bert.fifo", "r", encoding="utf-8") as f:
-        data = f.readlines()
-        data = (x.removesuffix("\n") for x in "".join(data).split("."))
-        data = [x for x in data if x]
+    with open("./test-bert.fifo", "rb") as f:
+        buffer = BytesIO(f.read())
+        buffer.seek(0)
+        data: list[str] = pickle.load(buffer)
         print(f"Number of sentences: {len(data)}")
         print("Generating embeddings...")
         start = t.perf_counter()
-        embedding: np.ndarray = model.encode(
-            data, device=device, show_progress_bar=True
-        )
+        embedding = model.encode(data, device=device, show_progress_bar=True)
         print(f"Total embedding length: {len(embedding)}")
         print(f"Embeddings generated in: {t.perf_counter() - start}")
     with open("./out.fifo", "wb") as fd:
