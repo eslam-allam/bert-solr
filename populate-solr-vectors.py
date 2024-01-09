@@ -136,16 +136,15 @@ class Solr:
         return cursor
 
 
-def send_embedding_request(text: str, medium: IOBase):
+def send_embedding_request(sentences: list[str], medium: IOBase):
     if medium.readable():
         logger.error("Medium must be write only..")
         return False
-    if not text:
+    if any([not x for x in sentences]):
         logger.warning("Cannot embed empty text.")
         return False
-    payload = [x.removesuffix("\n").removeprefix("\n") for x in text.split(".") if x]
 
-    pickle.dump(payload, medium)
+    pickle.dump(sentences, medium)
     return True
 
 
@@ -195,18 +194,20 @@ def main(
 
         logger.info(f"{i+1}.document ID: {doc_id}")
 
-        full_text = doc.get("full_text")
-        if full_text is None:
-            logger.warning(f"Could not find full text in doc with ID: '{doc_id}'")
+        title = doc.get("original_dc_title")
+        if title is None:
+            logger.warning(f"Could not find original title in doc with ID: '{doc_id}'")
             failed_count += 1
             continue
 
-        if not isinstance(full_text, str):
-            logger.error(f"Full text field in doc with ID: '{doc_id}' is not a string.")
+        if not isinstance(title, str):
+            logger.error(
+                f"Original title field in doc with ID: '{doc_id}' is not a string."
+            )
             failed_count += 1
             continue
         with open(request_file, "wb") as fs:
-            if not send_embedding_request(full_text, fs):
+            if not send_embedding_request([title], fs):
                 logger.error(
                     f"Could not send embedding request for doc with ID: '{doc_id}'"
                 )
@@ -219,8 +220,7 @@ def main(
             )
 
         updates = {}
-        for i, embedding in enumerate(embeddings):
-            updates[f"bert_vector_{i}"] = [float(w) for w in embedding]
+        updates["title_bert_vector"] = [float(w) for w in embeddings[0]]
 
         if not solr.atomic_update(doc_id, updates):
             logger.warning(f"Failed to update doc with ID: '{doc_id}'")
