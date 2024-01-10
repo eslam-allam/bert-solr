@@ -2,4 +2,6 @@ __pycache__
 *.json
 *.yaml
 *.yml
+!environment.yml
+!docker-compose.yml
 assets

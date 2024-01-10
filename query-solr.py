@@ -26,7 +26,7 @@ def recieve_embeddings(recieve_file: BufferedReader) -> np.ndarray:
     return np.load(buffer)
 
 
-QUERY = "happy thoughts"
+QUERY = "Artificial Inteligience"
 with open("./test-bert.fifo", "wb") as f:
     send_embedding_request([QUERY], f)
 

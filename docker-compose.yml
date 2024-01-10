@@ -1,0 +1,10 @@
+version: "3"
+services:
+  bert-solr:
+    ports:
+      - "8983:8983"
+    build:
+      context: .
+      dockerfile: Dockerfile
+volumes:
+  data:
