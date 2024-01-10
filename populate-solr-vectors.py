@@ -24,20 +24,27 @@ class Solr:
         self._uri = f"http://{host}:{port}/solr/{collection}"
 
     class _Cursor:
-        def __init__(self, uri, q, buffer_size, cursor, sort) -> None:
+        def __init__(self, uri, q, buffer_size, cursor, sort, total_scrolled) -> None:
             self._uri = uri
             self._doc_buffer = []
             self._q = q
             self._buffer_size = buffer_size
             self._cursor = cursor
+            self._previous_cursor = cursor
             self._sort = sort
+            self.total_scrolled = total_scrolled
 
         def __iter__(self):
             return self
 
         def __next__(self) -> dict[str, object]:
+            self.total_scrolled += 1
             if len(self._doc_buffer) != 0:
                 return self._doc_buffer.pop()
+
+            logger.debug(
+                f"Buffer ran out of documents. Requesting {self._buffer_size} more documents..."
+            )
             params = {
                 "q": self._q,
                 "rows": self._buffer_size,
@@ -57,6 +64,7 @@ class Solr:
             if result["nextCursorMark"] == self._cursor:
                 raise StopIteration()
 
+            self._previous_cursor = self._cursor
             self._cursor = result["nextCursorMark"]
             self._doc_buffer.extend(result["response"]["docs"])
 
@@ -65,15 +73,18 @@ class Solr:
         def reset(self):
             self._doc_buffer = []
             self._cursor = "*"
+            self._previous_cursor = "*"
+            self.total_scrolled = 0
 
         def save(self, f: TextIOWrapper):
             data = {
-                "cursor": self._cursor,
+                "cursor": self._previous_cursor,
                 "buffer_remaining": len(self._doc_buffer),
                 "uri": self._uri,
                 "buffer_size": self._buffer_size,
                 "sort": self._sort,
                 "q": self._q,
+                "total_scrolled": self.total_scrolled,
             }
             json.dump(data, f, indent=4)
 
@@ -98,27 +109,35 @@ class Solr:
             return False
         return True
 
-    def cursor(self, q="*:*", buffer_size=10, sort="id asc"):
-        return Solr._Cursor(self._uri, q, buffer_size, "*", sort)
+    def cursor(
+        self, q="*:*", buffer_size=10, sort="id asc", cursorMark="*", total_scrolled=0
+    ):
+        return Solr._Cursor(self._uri, q, buffer_size, cursorMark, sort, total_scrolled)
 
     def resumedCursor(self, f: TextIOWrapper):
         data: dict[str, object] = json.load(f)
         uri = str(data.get("uri", ""))
-        cursor = str(data.get("cursor", ""))
+        cursorMark = str(data.get("cursor", ""))
         buffer_remaining = data.get("buffer_remaining", -1)
         buffer_size = data.get("buffer_size", -1)
         sort = str(data.get("sort", ""))
         q = str(data.get("q", ""))
+        total_scrolled = data.get("total_scrolled", -1)
 
-        if not isinstance(buffer_remaining, int) or not isinstance(buffer_size, int):
+        if (
+            not isinstance(buffer_remaining, int)
+            or not isinstance(buffer_size, int)
+            or not isinstance(total_scrolled, int)
+        ):
             logger.warning("Malformed cursor checkpoint. Returning new cursor.")
             return self.cursor()
 
         if (
             not uri
-            or not cursor
+            or not cursorMark
             or buffer_remaining == -1
             or buffer_size == -1
+            or total_scrolled == -1
             or not sort
             or not q
         ):
@@ -129,9 +148,15 @@ class Solr:
             logger.warning("Invalid Solr Uri. Returning new cursor.")
             return self.cursor()
 
-        cursor = self.cursor(q, buffer_size, sort)
-        for _ in range(int(buffer_size) - int(buffer_remaining)):
-            next(cursor)
+        cursor = self.cursor(q, buffer_size, sort, cursorMark, total_scrolled)
+        logger.debug("Created resumed cursor. Fast forwarding to resumed state...")
+        fast_forward = buffer_size - buffer_remaining
+        logger.info(f"Fast forwarding {fast_forward} documents...")
+        for doc in cursor:
+            logger.debug(f"Popped ID: '{doc['id']}'.")
+            if len(cursor._doc_buffer) == buffer_remaining:
+                break
+        cursor.total_scrolled = total_scrolled
 
         return cursor
 
@@ -173,29 +198,26 @@ def main(
     solr = Solr(host, port, collection)
 
     if resume_checkpoint:
+        logger.info("Opening checkpoint file...")
         with open(checkpoint_file, "r", encoding="utf-8") as f:
             cursor = solr.resumedCursor(f)
     else:
+        logger.debug("No checkpoint selected.")
         cursor = solr.cursor(query, buffer_size, sort)
 
     updated_count = 0
     failed_count = 0
-    for i, doc in enumerate(cursor):
+    for doc in cursor:
         doc_id = doc.get("id", "")
+        doc_position = cursor.total_scrolled
 
         if not isinstance(doc_id, str) or not doc_id:
             logger.warning(
-                f"Document at position: {i} does not have a doc ID. Skipping..."
+                f"Document at position: {doc_position} does not have a doc ID. Skipping..."
             )
             continue
 
-        if killer.kill_now:
-            logger.info("Recieved shutdown signal. Exitting gracefully...")
-            with open(checkpoint_file, "w", encoding="utf-8") as f:
-                cursor.save(f)
-            return (updated_count, failed_count)
-
-        logger.info(f"{i+1}.document ID: {doc_id}")
+        logger.info(f"{doc_position}.document ID: {doc_id}")
 
         title = doc.get("original_dc_title")
         if title is None:
@@ -231,6 +253,12 @@ def main(
             continue
         logger.info(f"Succesfully updated doc with ID: '{doc_id}'")
         updated_count += 1
+
+        if killer.kill_now:
+            logger.info("Recieved shutdown signal. Exitting gracefully...")
+            with open(checkpoint_file, "w", encoding="utf-8") as f:
+                cursor.save(f)
+            return (updated_count, failed_count)
 
     return (updated_count, failed_count)
 

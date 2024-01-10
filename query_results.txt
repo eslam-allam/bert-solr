@@ -1,0 +1,167 @@
+Query: cancer treatment solutions
+
+Search results:
+
+
+------------------------------
+1. Metformin: A Possible Option in Cancer Chemotherapy
+Score: 0.9372597
+------------------------------
+
+------------------------------
+2. Combination Immunotherapy Approaches for Pancreatic Cancer Treatment
+Score: 0.92583954
+------------------------------
+
+------------------------------
+3. Alginate-Based Platforms for Cancer-Targeted Drug Delivery
+Score: 0.92526007
+------------------------------
+
+------------------------------
+4. A Review of Penile Cancer
+Score: 0.92401326
+------------------------------
+
+------------------------------
+5. Progress in Personalizing Chemotherapy for Bladder Cancer
+Score: 0.9208822
+------------------------------
+
+------------------------------
+6. Heat Shock Proteins, Autoimmunity, and Cancer Treatment
+Score: 0.91704994
+------------------------------
+
+------------------------------
+7. Leczyme: A New Candidate Drug for Cancer Therapy
+Score: 0.9120746
+------------------------------
+
+------------------------------
+8. Gastric Xanthoma Associated with Gastric Cancer Development: An Updated Review
+Score: 0.90643704
+------------------------------
+
+------------------------------
+9. Proceedings: Tumour antigen in human cancer patients' sera.
+Score: 0.9048109
+------------------------------
+
+------------------------------
+10. Individual patient data meta-analysis in cancer.
+Score: 0.9034318
+------------------------------
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Query: cancer effects on the body
+
+Search results:
+
+
+------------------------------
+1. Cancer of the uterine cervix and social conditions.
+Score: 0.9120307
+------------------------------
+
+------------------------------
+2. Colorectal Cancer Related to Chronic  Infection
+Score: 0.9064292
+------------------------------
+
+------------------------------
+3. Perforin expression in lymphocytes infiltrated to human colorectal cancer.
+Score: 0.9039916
+------------------------------
+
+------------------------------
+4. Heat Shock Proteins, Autoimmunity, and Cancer Treatment
+Score: 0.8993326
+------------------------------
+
+------------------------------
+5. Atrial Cardiomyopathy and Atrial Fibrillation in Cancer
+Score: 0.8975737
+------------------------------
+
+------------------------------
+6. A Case of Extreme Gastroparesis due to an Occult Small Cell Cancer of the Lung
+Score: 0.8926582
+------------------------------
+
+------------------------------
+7. A Review of Penile Cancer
+Score: 0.8925559
+------------------------------
+
+------------------------------
+8. c-Ki-ras amplification in human lung cancer.
+Score: 0.8907831
+------------------------------
+
+------------------------------
+9. Proceedings: Tumour antigen in human cancer patients' sera.
+Score: 0.8875358
+------------------------------
+
+------------------------------
+10. Management of Concomitant Cancer and Abdominal Aortic Aneurysm
+Score: 0.88203806
+------------------------------
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Query: AI research
+
+Search results:
+
+
+------------------------------
+1. A Cutting-Edge Survey of Tribological Behavior Evaluation Using Artificial and Computational Intelligence Models
+Score: 0.86784184
+------------------------------
+
+------------------------------
+2. Cornell Potential: A Neural Network Approach
+Score: 0.8529172
+------------------------------
+
+------------------------------
+3. The Aspects, the Origin, and the Merit of Aware Computing
+Score: 0.8504995
+------------------------------
+
+------------------------------
+4. Software Defect Prediction through Neural Network and Feature Selections
+Score: 0.8493547
+------------------------------
+
+------------------------------
+5. Intelligent Psychology Teaching System Based on Adaptive Neural Network
+Score: 0.8462649
+------------------------------
+
+------------------------------
+6. A Dynamic Bayesian Approach to Computational Laban Shape Quality Analysis
+Score: 0.8444493
+------------------------------
+
+------------------------------
+7. Virtual Simulation Design Facing Smart Payment Screen on the Background of Artificial Intelligence
+Score: 0.84409595
+------------------------------
+
+------------------------------
+8. The open-source neuroimaging research enterprise.
+Score: 0.84380066
+------------------------------
+
+------------------------------
+9. A Review of Hybrid Brain-Computer Interface Systems
+Score: 0.84371674
+------------------------------
+
+------------------------------
+10. A Real-Time Angle- and Illumination-Aware Face Recognition System Based on Artificial Neural Network
+Score: 0.84228754
+------------------------------
+
+

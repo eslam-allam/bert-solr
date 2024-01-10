@@ -5,3 +5,4 @@ __pycache__
 !environment.yml
 !docker-compose.yml
 assets
+*.fifo

@@ -2,7 +2,11 @@ import numpy as np
 import pickle
 from io import IOBase, BufferedReader, BytesIO
 import requests
-import json
+import sys
+
+query = sys.argv[1]
+REQUEST_FILE = "./request.fifo"
+REPLY_FILE = "./reply.fifo"
 
 
 def send_embedding_request(sentences: list[str], medium: IOBase):
@@ -26,18 +30,17 @@ def recieve_embeddings(recieve_file: BufferedReader) -> np.ndarray:
     return np.load(buffer)
 
 
-QUERY = "Artificial Inteligience"
-with open("./test-bert.fifo", "wb") as f:
-    send_embedding_request([QUERY], f)
+with open(REQUEST_FILE, "wb") as f:
+    send_embedding_request([query], f)
 
-with open("./out.fifo", "rb") as f:
+with open(REPLY_FILE, "rb") as f:
     embedded_query = recieve_embeddings(f)
 embedded_query = [float(x) for x in embedded_query[0]]
 
 solr_query = f"{{!knn f=title_bert_vector topK=10}}{embedded_query}"
-params = {"q": solr_query, "wt": "json"}
+params = {"q": solr_query, "wt": "json", "fl": "original_dc_title score"}
 response = requests.post(
-    "http://localhost:8983/solr/adri_documents/query",
+    "http://localhost:8984/solr/adri_documents/query",
     json={"params": params},
     headers={"Content-type": "application/json"},
 )
@@ -45,11 +48,8 @@ response = requests.post(
 if response.status_code != 200:
     print(response.text)
 else:
-    print(
-        json.dumps(
-            {
-                f"doc_{i + 1}": x["original_dc_title"]
-                for i, x in enumerate(response.json()["response"]["docs"])
-            }
-        )
-    )
+    sep = "-" * 30
+    result = f"Query: {query}\n\nSearch results:\n\n"
+    for i, doc in enumerate(response.json()["response"]["docs"]):
+        result += f'\n{sep}\n{i+1}. {doc["original_dc_title"]}\nScore: {doc["score"]}\n{sep}\n'
+    print(result)
