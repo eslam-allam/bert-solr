@@ -1,15 +1,31 @@
+import os
+import pickle
+import stat
+import sys
 import time as t
 from io import BytesIO
 
 import numpy as np
 import torch
 from sentence_transformers import SentenceTransformer
-import pickle
-
 
 REQUEST_FILE = "request.fifo"
 REPLY_FILE = "reply.fifo"
 
+
+def check_and_create_fifo(path: str):
+    if os.path.exists(path):
+        if not stat.S_ISFIFO(os.stat(REQUEST_FILE).st_mode):
+            print(f"{path} is not a pipe.")
+            return False
+        return True
+    else:
+        os.mkfifo(path)
+        return True
+
+
+if not check_and_create_fifo(REQUEST_FILE) or not check_and_create_fifo(REPLY_FILE):
+    sys.exit(0)
 
 print("Loading model...")
 start = t.perf_counter()

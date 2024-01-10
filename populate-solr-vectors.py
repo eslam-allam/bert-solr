@@ -164,7 +164,10 @@ def main(
     request_file: str,
     recieve_file: str,
     checkpoint_file: str,
-    resume_checkpoint,
+    resume_checkpoint: bool,
+    query: str,
+    sort: str,
+    buffer_size: int,
 ):
     killer = GracefulKiller()
     solr = Solr(host, port, collection)
@@ -173,7 +176,7 @@ def main(
         with open(checkpoint_file, "r", encoding="utf-8") as f:
             cursor = solr.resumedCursor(f)
     else:
-        cursor = solr.cursor()
+        cursor = solr.cursor(query, buffer_size, sort)
 
     updated_count = 0
     failed_count = 0
@@ -237,6 +240,7 @@ if __name__ == "__main__":
         "Solr Vector Indexer",
         "Converts full text from a Solr collection to dense vector embeddings.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        allow_abbrev=False,
     )
 
     parser.add_argument(
@@ -281,6 +285,20 @@ if __name__ == "__main__":
         help="Name of target Solr collection.",
     )
     solr_args.add_argument(
+        "-q",
+        "--query",
+        type=str,
+        default="*:*",
+        help="Query to select solr documents.",
+    )
+    solr_args.add_argument(
+        "-sr",
+        "--sort",
+        type=str,
+        default="Sort criterial for fetching documents (Must include a unique field).",
+        help="Query to select solr documents.",
+    )
+    solr_args.add_argument(
         "-cp",
         "--checkpoint-file",
         type=str,
@@ -292,6 +310,18 @@ if __name__ == "__main__":
         "--resume-checkpoint",
         action="store_true",
         help="Resume from previously saved checkpoint.",
+    )
+
+    developer_args = parser.add_argument_group(
+        "Developer Args", "Used for tweaking program's performance."
+    )
+
+    developer_args.add_argument(
+        "-bs",
+        "--buffer-size",
+        type=int,
+        default=10,
+        help="Number of documents to cache while traversing Solr.",
     )
 
     args = parser.parse_args()
@@ -308,6 +338,9 @@ if __name__ == "__main__":
         args.recieve_file,
         args.checkpoint_file,
         args.resume_checkpoint,
+        args.query,
+        args.sort,
+        args.buffer_size,
     )
 
     logger.info(f"Total updated: {counts[0]}. Total Failed: {counts[1]}")
