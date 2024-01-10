@@ -6,7 +6,10 @@ import torch
 from sentence_transformers import SentenceTransformer
 import pickle
 
-path = "./test-pipe"
+
+REQUEST_FILE = "request.fifo"
+REPLY_FILE = "reply.fifo"
+
 
 print("Loading model...")
 start = t.perf_counter()
@@ -15,7 +18,7 @@ model = SentenceTransformer("bert-base-nli-mean-tokens").to(device)
 print(f"Model loaded in: {t.perf_counter() - start}")
 
 while True:
-    with open("./test-bert.fifo", "rb") as f:
+    with open(REQUEST_FILE, "rb") as f:
         buffer = BytesIO(f.read())
         buffer.seek(0)
         data: list[str] = pickle.load(buffer)
@@ -25,7 +28,7 @@ while True:
         embedding = model.encode(data, device=device, show_progress_bar=True)
         print(f"Total embedding length: {len(embedding)}")
         print(f"Embeddings generated in: {t.perf_counter() - start}")
-    with open("./out.fifo", "wb") as fd:
+    with open(REPLY_FILE, "wb") as fd:
         buffer = BytesIO()
         np.save(buffer, embedding)
         buffer.seek(0)
