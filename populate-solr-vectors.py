@@ -1,3 +1,4 @@
+from os.path import isfile
 import requests
 import argparse
 import logging
@@ -7,6 +8,7 @@ from io import BytesIO, BufferedReader, IOBase, TextIOWrapper
 import numpy as np
 import json
 import pickle
+import os
 
 logger: ColouredLogger = logging.getLogger(__name__)
 
@@ -188,7 +190,7 @@ def main(
     collection: str,
     request_file: str,
     recieve_file: str,
-    checkpoint_file: str,
+    checkpoint_suffix: str,
     resume_checkpoint: bool,
     query: str,
     sort: str,
@@ -197,10 +199,15 @@ def main(
     killer = GracefulKiller()
     solr = Solr(host, port, collection)
 
+    checkpoint_file = f".{collection}{checkpoint_suffix}.json"
     if resume_checkpoint:
-        logger.info("Opening checkpoint file...")
-        with open(checkpoint_file, "r", encoding="utf-8") as f:
-            cursor = solr.resumedCursor(f)
+        if not os.path.isfile(checkpoint_file):
+            logger.warning("Checkpoint file doesn't exist. Returning new cursor...")
+            cursor = solr.cursor(query, buffer_size, sort)
+        else:
+            logger.info("Opening checkpoint file...")
+            with open(checkpoint_file, "r", encoding="utf-8") as f:
+                cursor = solr.resumedCursor(f)
     else:
         logger.debug("No checkpoint selected.")
         cursor = solr.cursor(query, buffer_size, sort)
@@ -263,12 +270,66 @@ def main(
     return (updated_count, failed_count)
 
 
+def print_saved_checkpoints(args: argparse.Namespace):
+    checkpoint_suffix = args.checkpoint_suffix
+    file_suffix = f"{checkpoint_suffix}.json"
+    checkpoints = sorted([x for x in os.listdir(".") if x.endswith(file_suffix)])
+    if not checkpoints:
+        print("No checkpoints saved.")
+        return
+    out = "Saved Checkpoints:\n\n"
+    for i, checkpoint in enumerate(checkpoints):
+        out += f"{i + 1}. {checkpoint.removesuffix(file_suffix).removeprefix('.')}\n"
+
+    print(out)
+
+
+def remove_saved_checkpoint(args: argparse.Namespace):
+    checkpoint_suffix = args.checkpoint_suffix
+    file_suffix = f"{checkpoint_suffix}.json"
+    selected: int = args.checkpoint_number
+    file_name = sorted([x for x in os.listdir(".") if x.endswith(file_suffix)])[
+        selected - 1
+    ]
+    checkpoint_name = file_name.removeprefix(".").removesuffix(file_suffix)
+    confirmation = input(
+        f"Are you sure you want to delete checkpoint '{checkpoint_name}'? [y/n]: "
+    )
+
+    if confirmation.lower() == "y":
+        os.remove(file_name)
+        print(f"{checkpoint_name} deleted succesfully.")
+
+
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
+    LOGGING_FOLDER = "./logs"
+    LOGGING_FILE = f"{LOGGING_FOLDER}/vector-populator.log"
+    CHECKPOINT_SUFFIX = "-checkpoint"
+
+    parent_parser = argparse.ArgumentParser(
         "Solr Vector Indexer",
-        "Converts full text from a Solr collection to dense vector embeddings.",
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         allow_abbrev=False,
+    )
+
+    subparsers = parent_parser.add_subparsers()
+
+    checkpoints = subparsers.add_parser(
+        "checkpoints", help="Checkpoint Operations.", allow_abbrev=False
+    )
+    checkpoint_commands = checkpoints.add_subparsers()
+    list_checkpoints = checkpoint_commands.add_parser(
+        "ls", help="List saved checkpoints."
+    )
+
+    remove_checkpoint = checkpoint_commands.add_parser(
+        "rm", help="Delete a checkpoint by number."
+    )
+    remove_checkpoint.add_argument("checkpoint_number", type=int)
+
+    parser = subparsers.add_parser(
+        "run",
+        help="Start vector indexing.",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
 
     parser.add_argument(
@@ -327,13 +388,6 @@ if __name__ == "__main__":
         help="Query to select solr documents.",
     )
     solr_args.add_argument(
-        "-cp",
-        "--checkpoint-file",
-        type=str,
-        default=".checkpoint.json",
-        help="Path to file used for saving Solr cursor checkpoint.",
-    )
-    solr_args.add_argument(
         "-rc",
         "--resume-checkpoint",
         action="store_true",
@@ -352,23 +406,35 @@ if __name__ == "__main__":
         help="Number of documents to cache while traversing Solr.",
     )
 
-    args = parser.parse_args()
-
-    LOGGING_FOLDER = "./logs"
-    LOGGING_FILE = f"{LOGGING_FOLDER}/vector-populator.log"
-
-    logger.auto_configure(args.debug, LOGGING_FILE)
-    counts = main(
-        args.host,
-        args.port,
-        args.collection,
-        args.request_file,
-        args.recieve_file,
-        args.checkpoint_file,
-        args.resume_checkpoint,
-        args.query,
-        args.sort,
-        args.buffer_size,
+    list_checkpoints.set_defaults(
+        func=print_saved_checkpoints,
+        checkpoint_suffix=CHECKPOINT_SUFFIX,
+        parser_type="util",
     )
+    remove_checkpoint.set_defaults(
+        func=remove_saved_checkpoint,
+        checkpoint_suffix=CHECKPOINT_SUFFIX,
+        parser_type="util",
+    )
+    parser.set_defaults(parser_type="main")
 
-    logger.info(f"Total updated: {counts[0]}. Total Failed: {counts[1]}")
+    args = parent_parser.parse_args()
+
+    if args.parser_type == "util":
+        args.func(args)
+    else:
+        logger.auto_configure(args.debug, LOGGING_FILE)
+        counts = main(
+            args.host,
+            args.port,
+            args.collection,
+            args.request_file,
+            args.recieve_file,
+            CHECKPOINT_SUFFIX,
+            args.resume_checkpoint,
+            args.query,
+            args.sort,
+            args.buffer_size,
+        )
+
+        logger.info(f"Total updated: {counts[0]}. Total Failed: {counts[1]}")
