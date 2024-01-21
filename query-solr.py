@@ -10,6 +10,7 @@ import sys
 import tty
 import os
 from utils.console_utils import Loader
+import time
 
 class QueryType(Enum):
     EDISMAX = 'edismax'
@@ -48,6 +49,8 @@ def generate_vector_query(query: str, page: int, rows: int, request_file: str, r
 
 
 def query_solr(query_type: QueryType, query: str, request_file: str, reply_file: str, page: int, rows: int):
+    start = time.perf_counter()
+
     edismax_query = f"{{!edismax qf='original_dc_title^5 original_dc_description_abstract^2'}}{query}"
     rerank_query = "{!rerank reRankQuery=$rqq reRankDocs=50 reRankWeight=3}"
 
@@ -71,7 +74,7 @@ def query_solr(query_type: QueryType, query: str, request_file: str, reply_file:
         headers={"Content-type": "application/json"},
     )
 
-    results = {"title": [], "score": []}
+    results = {"title": [], "score": [], "time_taken": []}
     if response.status_code != 200:
         print(response.text)
         return results
@@ -79,6 +82,7 @@ def query_solr(query_type: QueryType, query: str, request_file: str, reply_file:
         for doc in response.json()["response"]["docs"]:
             results["title"].append(doc['original_dc_title'])
             results['score'].append(doc['score'])
+            results['time_taken'].append(time.perf_counter() - start)
         return results
 
 def build_result(request_file: str, reply_file: str, query: str, page:int, rows: int):
@@ -181,8 +185,10 @@ if __name__ == "__main__":
             max_results = max((len(edismax_result['title']), len(vector_result['title']), len(hybrid_result['title'])))
             max_index =  max_results + last_index
             data['#'] = [ x + 1 for x in range(last_index, max_index)]
-            data["title"] = concater(edismax_result['title'], vector_result['title'], hybrid_result['title'])
-            data["score"] = concater(edismax_result['score'], vector_result['score'], hybrid_result['score'])
+            data["Title"] = concater(edismax_result['title'], vector_result['title'], hybrid_result['title'])
+            data["Score"] = concater(edismax_result['score'], vector_result['score'], hybrid_result['score'])
+            data["Time Taken (s)"] = concater(edismax_result['time_taken'], vector_result['time_taken'], hybrid_result['time_taken'])
+
 
 
             print(f"\nQuery: {query}")
